@@ -13,11 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yokonao/okf-view/internal/okf"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/text"
+
+	"github.com/yokonao/okf-view/internal/okf"
 )
 
 //go:embed index.html
