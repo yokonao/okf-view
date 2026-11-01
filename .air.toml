@@ -1,0 +1,6 @@
+[build]
+  cmd = "go build -o ./tmp/okf-view ./cmd/okf-view"
+  entrypoint = ["./tmp/okf-view"]
+  args_bin = ["serve", "--no-open", "--addr", "127.0.0.1:8080"]
+  send_interrupt = true
+  kill_delay = "1s"

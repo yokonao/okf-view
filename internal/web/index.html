@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>okf-view</title>
+<style>
+  :root {
+    --bg: #f8fafd;
+    --surface: #ffffff;
+    --surface-2: #f0f4f9;
+    --surface-3: #e9eef6;
+    --ink: #1f1f1f;
+    --muted: #444746;
+    --faint: #5f6368;
+    --border: #e1e3e1;
+    --border-strong: #c4c7c5;
+    --accent: #0b57d0;
+    --accent-hover: #0842a0;
+    --accent-soft: #d3e3fd;
+    --on-accent-soft: #041e49;
+    --hover: rgba(68,71,70,0.08);
+    --focus-ring: rgba(11,87,208,0.28);
+    --code-bg: #f0f4f9;
+    --code-ink: #1f1f1f;
+    --human: #146c2e;
+    --human-soft: #c4eed0;
+    --machine: #7d3bd1;
+    --machine-soft: #eadcff;
+    --unverified: #747775;
+    --warn: #8c4f00;
+    --warn-soft: #fef0c7;
+    --danger: #b3261e;
+    --danger-soft: #fce8e6;
+    --edge: rgba(68,71,70,0.20);
+    --edge-out: #0b57d0;
+    --edge-in: #e37400;
+    --shadow: 0 1px 2px rgba(60,64,67,0.15), 0 1px 3px 1px rgba(60,64,67,0.08);
+    --sans: "Google Sans", "Google Sans Text", Roboto, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --display: "Google Sans Display", "Google Sans", Roboto, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "Google Sans Mono", "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131314;
+      --surface: #1e1f20;
+      --surface-2: #282a2c;
+      --surface-3: #333537;
+      --ink: #e3e3e3;
+      --muted: #c4c7c5;
+      --faint: #9aa0a6;
+      --border: #3c4043;
+      --border-strong: #5f6368;
+      --accent: #a8c7fa;
+      --accent-hover: #d3e3fd;
+      --accent-soft: #004a77;
+      --on-accent-soft: #c2e7ff;
+      --hover: rgba(227,227,227,0.08);
+      --focus-ring: rgba(168,199,250,0.35);
+      --code-bg: #282a2c;
+      --code-ink: #e3e3e3;
+      --human: #6dd58c;
+      --human-soft: #0f5223;
+      --machine: #d7baff;
+      --machine-soft: #4a2582;
+      --unverified: #8e918f;
+      --warn: #ffd88a;
+      --warn-soft: #4f3a00;
+      --danger: #f2b8b5;
+      --danger-soft: #601410;
+      --edge: rgba(227,227,227,0.18);
+      --edge-out: #a8c7fa;
+      --edge-in: #ffb870;
+      --shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); font-size: 15px; background: var(--bg); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased; letter-spacing: 0.01em; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 12px;
+    height: 64px; padding: 0 24px;
+    background: var(--bg);
+  }
+  header .mark { flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); position: relative; }
+  header .mark::after { content: ""; position: absolute; inset: 8px; border-radius: 3px; border: 2px solid var(--surface); }
+  header h1 { font-family: var(--display); font-size: 1.375rem; font-weight: 400; color: var(--muted); }
+  header h1 a { color: inherit; }
+  header h1 a:hover { text-decoration: none; }
+  header .sub { margin-left: 8px; padding: 2px 12px; border-radius: 999px; background: var(--surface-3); font: 0.8rem var(--mono); color: var(--faint); overflow-wrap: anywhere; }
+
+  body { height: 100vh; display: flex; flex-direction: column; }
+  header { flex: none; }
+  .panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 0 16px 16px; }
+  .selected-page .panes { grid-template-columns: minmax(0, 1fr) min(640px, 46vw); }
+  #mapPane { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-radius: 16px; overflow: hidden; }
+  #detailPane { display: none; position: relative; overflow: auto; padding: 20px 32px 60px; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); }
+  .selected-page #detailPane { display: block; }
+  .sheet-bar { position: sticky; top: -20px; z-index: 3; display: flex; align-items: center; gap: 4px; margin: -20px -32px 8px; padding: 12px 16px 8px 24px; background: var(--surface); }
+  .sheet-bar .crumbs { flex: 1; margin: 0; }
+  .icon-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; color: var(--muted); font-size: 1.4rem; line-height: 1; }
+  .icon-btn:hover { background: var(--hover); color: var(--ink); text-decoration: none; }
+
+  .toolbar { flex: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 16px 10px; }
+  .toolbar select { flex: 0 1 160px; }
+  input[type=search], select {
+    height: 36px; padding: 0 14px;
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--surface); color: var(--muted);
+    font: 500 0.85rem var(--sans);
+    min-width: 0;
+    transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  select { appearance: none; cursor: pointer; padding-right: 30px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  select:hover { background-color: var(--hover); }
+  input[type=search] { flex: 1 1 320px; max-width: 640px; height: 46px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--surface-3); color: var(--ink); font: 400 1rem var(--sans); }
+  input[type=search]:focus { background: var(--surface); box-shadow: var(--shadow); }
+  input[type=search]::placeholder { color: var(--faint); }
+  input:focus, select:focus { outline: none; }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; margin-left: 4px; font: 500 0.85rem var(--sans); color: var(--muted); cursor: pointer; user-select: none; }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch .track { position: relative; width: 36px; height: 20px; border-radius: 999px; background: var(--surface-3); border: 2px solid var(--border-strong); transition: background 0.15s, border-color 0.15s; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--faint); transition: transform 0.15s, background 0.15s; }
+  .switch input:checked + .track { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(16px); background: var(--surface); }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .count { flex: 1 1 100%; padding: 2px 4px 0; font-size: 0.8rem; color: var(--faint); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .count .k { display: inline-flex; align-items: center; gap: 6px; }
+  .count .sep { flex: 1; }
+  .count b { font-weight: 500; color: var(--muted); }
+
+  /* Map */
+  #mapScroll { flex: 1; min-height: 0; overflow: auto; }
+  #map { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; padding: 6px 16px 40px; }
+  #edges { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; z-index: 2; }
+  #edges path { fill: none; stroke: var(--edge); stroke-width: 1.25; }
+  #edges path.halo { stroke: var(--surface); stroke-width: 6; stroke-linecap: round; }
+  #edges path.out { stroke: var(--edge-out); stroke-width: 2.25; }
+  #edges path.in { stroke: var(--edge-in); stroke-width: 2.25; }
+  #edges path.dim { stroke-opacity: 0.35; }
+  .box { position: relative; background: var(--surface-2); border-radius: 16px; padding: 12px 12px 12px; }
+  #map > .box { min-width: 0; }
+  .box-head .skip { color: var(--warn); font-size: 0.8rem; }
+  .box .box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 8px 8px; margin: 0; }
+  .box-head { display: flex; align-items: baseline; gap: 8px; margin: 0 4px 6px; min-width: 0; }
+  .box-head a { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .box-head a:hover { color: var(--accent); text-decoration: none; }
+  .box > .box-head a { font-family: var(--display); font-size: 1.15rem; font-weight: 400; }
+  .box .box > .box-head a { font-family: var(--sans); font-size: 0.875rem; font-weight: 500; }
+  .box-head .p { font: 0.72rem var(--mono); color: var(--faint); white-space: nowrap; }
+  .box-head .n { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--surface-3); font: 500 0.72rem var(--sans); color: var(--muted); text-align: center; line-height: 1.6; }
+  .box.here { box-shadow: 0 0 0 2px var(--accent); }
+  .chips { display: flex; flex-direction: column; gap: 2px; }
+  #map > .box > .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); column-gap: 10px; }
+  .subs { columns: 230px; column-gap: 10px; margin-top: 8px; }
+  .subs > .box { break-inside: avoid; margin-bottom: 10px; }
+  .chips:empty { display: none; }
+  .chip { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid transparent; color: var(--ink); font-size: 0.85rem; min-width: 0; transition: opacity 0.12s, background 0.12s; }
+  .chip:hover { background: var(--hover); color: var(--ink); text-decoration: none; }
+  .chip .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip .deg { flex: none; margin-left: auto; font: 0.72rem var(--mono); color: var(--faint); white-space: nowrap; }
+  .chip .deg + .flag { margin-left: 0; }
+  .chip .flag { flex: none; width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
+  .chip .flag.stale { background: var(--warn); }
+  .chip .flag.problem { background: var(--danger); }
+  .chip.deprecated .t { text-decoration: line-through; color: var(--faint); }
+  .chip.selected { background: var(--accent-soft); color: var(--on-accent-soft); font-weight: 500; }
+  .chip.linked-out { border-color: var(--edge-out); }
+  .chip.linked-in { border-color: var(--edge-in); }
+  .focusing .chip:not(.selected):not(.linked-out):not(.linked-in):not(:hover) { opacity: 0.38; }
+  .chip.miss { opacity: 0.15 !important; }
+
+  /* Shared */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+  .label { font-size: 0.875rem; font-weight: 500; color: var(--muted); }
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 28px 4px 10px; }
+  .summary { padding: 20px 24px; background: var(--surface-2); border: 0; }
+  .stats { display: flex; flex-wrap: wrap; gap: 12px 36px; }
+  .stat { display: flex; flex-direction: column; }
+  .stat-num { font-family: var(--display); font-size: 2rem; font-weight: 400; line-height: 1.2; color: var(--ink); }
+  .stat .label { font-size: 0.8rem; font-weight: 400; color: var(--faint); }
+  .list { overflow: hidden; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 20px; padding: 14px 20px; border-bottom: 1px solid var(--border); color: inherit; transition: background 0.12s; }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--hover); color: inherit; text-decoration: none; }
+  .row-name { font-weight: 500; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+  .row-desc { grid-column: 1; color: var(--muted); font-size: 0.9rem; }
+  .row-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; font-size: 0.8rem; color: var(--faint); overflow-wrap: anywhere; min-width: 0; }
+  .ts { color: var(--faint); font-size: 0.8rem; white-space: nowrap; }
+  .empty { padding: 48px; text-align: center; color: var(--faint); }
+
+  .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 8px; background: transparent; border: 1px solid var(--border-strong); color: var(--muted); font: 500 0.75rem var(--sans); white-space: nowrap; }
+  .badge.type { background: var(--accent-soft); border-color: transparent; color: var(--on-accent-soft); }
+  .badge.human-reviewed { background: var(--human-soft); border-color: transparent; color: var(--human); }
+  .badge.machine-confirmed { background: var(--machine-soft); border-color: transparent; color: var(--machine); }
+  .badge.stale { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+  .badge.deprecated, .badge.problem { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
+
+  .dot { flex: none; display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--unverified); }
+  .dot.human-reviewed { background: var(--human); border-color: var(--human); }
+  .dot.machine-confirmed { background: var(--machine); border-color: var(--machine); }
+  .line { flex: none; display: inline-block; width: 18px; height: 0; border-top: 2px solid; border-radius: 2px; }
+  .line.out { border-color: var(--edge-out); }
+  .line.in { border-color: var(--edge-in); }
+
+  .bundle-card { padding: 18px 22px; margin-bottom: 12px; transition: box-shadow 0.15s; }
+  .bundle-card:hover { box-shadow: var(--shadow); }
+  .bundle-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 10px; }
+  .bundle-name { font-family: var(--display); font-size: 1.25rem; font-weight: 400; color: var(--ink); }
+  .bundle-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 0 4px; font-size: 0.85rem; color: var(--muted); }
+  .legend span { display: inline-flex; gap: 8px; align-items: center; }
+  .warn { padding: 12px 16px; margin: 8px 0; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-size: 0.875rem; overflow-wrap: anywhere; }
+  .warn.problem { background: var(--danger-soft); color: var(--danger); }
+
+  /* Pages */
+  .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin-bottom: 14px; font-size: 0.875rem; color: var(--faint); }
+  .crumbs a { color: var(--faint); padding: 2px 8px; border-radius: 8px; }
+  .crumbs a:hover { background: var(--hover); color: var(--ink); text-decoration: none; }
+  .crumbs a:first-child { margin-left: -8px; }
+  .title { font-family: var(--display); font-size: 2rem; font-weight: 400; line-height: 1.3; margin-bottom: 8px; color: var(--ink); }
+  .desc { font-size: 1.05rem; color: var(--muted); margin-bottom: 16px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .meta { display: grid; grid-template-columns: auto 1fr; gap: 10px 24px; align-items: baseline; padding: 18px 22px; margin-bottom: 20px; background: var(--surface-2); border: 0; }
+  .meta .label { font-size: 0.8rem; color: var(--faint); }
+  .meta-value { font: 0.85rem var(--mono); color: var(--ink); word-break: break-all; }
+  .meta-value > div + div { margin-top: 2px; }
+  .path { display: flex; gap: 10px; align-items: center; }
+  .btn { flex: none; display: inline-flex; align-items: center; height: 32px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--accent); font: 500 0.85rem var(--sans); cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--hover); color: var(--accent); text-decoration: none; }
+  .tag { cursor: pointer; }
+  .tag:hover { background: var(--hover); }
+
+  .md { padding: 24px 28px; font-size: 1rem; line-height: 1.75; overflow-wrap: anywhere; }
+  .md > :first-child { margin-top: 0; }
+  .md > :last-child { margin-bottom: 0; }
+  .md p { margin: 12px 0; }
+  .md h1, .md h2, .md h3, .md h4 { font-family: var(--display); font-weight: 400; line-height: 1.35; margin: 24px 0 8px; }
+  .md h1 { font-size: 1.5rem; } .md h2 { font-size: 1.3rem; } .md h3 { font-size: 1.1rem; font-weight: 500; }
+  .md ul, .md ol { margin: 12px 0; padding-left: 1.5em; }
+  .md li { margin: 4px 0; }
+  .md li::marker { color: var(--faint); }
+  .md a:hover { text-decoration: underline; }
+  .md a.broken { color: var(--danger); text-decoration: underline wavy; cursor: help; }
+  .md strong { font-weight: 500; }
+  .md code { font-family: var(--mono); font-size: 0.88em; background: var(--surface-2); border-radius: 6px; padding: 2px 6px; }
+  .md pre { background: var(--code-bg); border-radius: 12px; padding: 16px 18px; margin: 14px 0; overflow-x: auto; }
+  .md pre code { background: none; padding: 0; color: var(--code-ink); font-size: 0.85rem; line-height: 1.6; }
+  .md blockquote { border-left: 4px solid var(--accent-soft); padding-left: 16px; color: var(--muted); }
+  .md table { border-collapse: separate; border-spacing: 0; margin: 14px 0; font-size: 0.9rem; display: block; overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; width: fit-content; max-width: 100%; }
+  .md th, .md td { border-bottom: 1px solid var(--border); padding: 10px 16px; text-align: left; }
+  .md tr:last-child td { border-bottom: 0; }
+  .md th { background: var(--surface-2); font-weight: 500; color: var(--muted); }
+  .md img { max-width: 100%; border-radius: 12px; }
+
+  @media (max-width: 900px) {
+    body { height: auto; display: block; }
+    header { padding: 0 16px; }
+    header .sub { display: none; }
+    .panes, .selected-page .panes { display: block; padding: 0 8px 8px; }
+    .toolbar select { flex: 1 1 40%; }
+    #map { padding: 6px 12px 28px; }
+    #detailPane { position: fixed; inset: 0; z-index: 20; border-radius: 0; padding: 20px 16px 60px; }
+    .sheet-bar { margin: -20px -16px 8px; padding: 10px 8px 8px 16px; }
+    .md { padding: 18px; }
+    .title { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="mark" aria-hidden="true"></span>
+  <h1><a href="#">okf-view</a></h1>
+  <span class="sub" id="dir"></span>
+</header>
+<div class="panes">
+  <div id="mapPane">
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search concepts">
+      <select id="bundle"><option value="">All bundles</option></select>
+      <select id="type"><option value="">All types</option></select>
+      <select id="trust">
+        <option value="">Any trust</option>
+        <option value="human-reviewed">Human reviewed</option>
+        <option value="machine-confirmed">Machine confirmed</option>
+        <option value="unverified">Unverified</option>
+      </select>
+      <select id="state">
+        <option value="">Any state</option>
+        <option value="stale">Stale</option>
+        <option value="deprecated">Deprecated</option>
+        <option value="problem">Has problems</option>
+      </select>
+      <label class="switch" title="Draw every link, not just those of the concept in focus"><input type="checkbox" id="allLinks"><span class="track"></span>All links</label>
+      <div class="count" id="count"></div>
+    </div>
+    <div id="mapScroll"><div id="map"></div></div>
+  </div>
+  <div id="detailPane"></div>
+</div>
+<script>
+let data = { bundles: [], pages: [] };
+let byKey = new Map();
+// Concept key → keys of the concepts it links to.
+let outLinks = new Map();
+// Concept key → its chip in the map.
+let chips = new Map();
+let hovered = "";
+const $ = (id) => document.getElementById(id);
+const SVG = "http://www.w3.org/2000/svg";
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  Object.assign(e, attrs);
+  e.append(...children.filter((c) => c != null && c !== false));
+  return e;
+}
+
+const href = (key) => "#" + encodeURI(key);
+const badge = (cls, text) => el("span", { className: "badge " + cls, textContent: text });
+const dot = (trust) => el("span", { className: "dot " + trust, title: trust });
+const date = (s) => new Date(s).toLocaleDateString();
+const concepts = () => data.pages.filter((p) => p.kind === "concept");
+const trustLabel = { "human-reviewed": "human reviewed", "machine-confirmed": "machine confirmed", "unverified": "unverified" };
+const current = () => decodeURIComponent(location.hash.slice(1));
+
+function stateBadges(p) {
+  return [
+    p.status && p.status !== "stable" ? badge(p.status === "deprecated" ? "deprecated" : "", p.status) : null,
+    p.stale ? badge("stale", "stale") : null,
+    p.problem ? badge("problem", "problem") : null,
+  ];
+}
+
+function counts(cs) {
+  const n = (f) => cs.filter(f).length;
+  return {
+    total: cs.length,
+    human: n((c) => c.trust === "human-reviewed"),
+    machine: n((c) => c.trust === "machine-confirmed"),
+    unverified: n((c) => c.trust === "unverified"),
+    stale: n((c) => c.stale),
+    deprecated: n((c) => c.status === "deprecated"),
+    problem: n((c) => c.problem),
+  };
+}
+
+// Map: directories as nested boxes, concepts as chips, links as curves.
+
+function childrenOf(bundle, dir) {
+  const inDir = (p) => p.bundle === bundle && p.dir === dir && p.rel !== dir;
+  return {
+    cs: concepts().filter(inDir).sort((a, b) => a.title.localeCompare(b.title)),
+    ds: data.pages.filter((p) => p.kind === "dir" && inDir(p)).sort((a, b) => a.rel.localeCompare(b.rel)),
+  };
+}
+
+function chip(c) {
+  const a = el("a", {
+    className: "chip" + (c.status === "deprecated" ? " deprecated" : ""),
+    href: href(c.key),
+    title: [c.title, c.description, c.rel].filter(Boolean).join("\n"),
+  },
+    dot(c.trust),
+    el("span", { className: "t", textContent: c.title }),
+    degree(c),
+    c.problem ? el("span", { className: "flag problem", title: c.problem }) : c.stale ? el("span", { className: "flag stale", title: "stale" }) : null);
+  a.addEventListener("mouseenter", () => { hovered = c.key; focus(); });
+  a.addEventListener("mouseleave", () => { hovered = ""; focus(); });
+  chips.set(c.key, a);
+  return a;
+}
+
+function degree(c) {
+  const out = (outLinks.get(c.key) || []).length;
+  const inn = (c.backlinks || []).length;
+  if (!out && !inn) return null;
+  return el("span", {
+    className: "deg",
+    textContent: [out ? `→${out}` : "", inn ? `←${inn}` : ""].filter(Boolean).join(" "),
+    title: `links to ${out}, linked from ${inn}`,
+  });
+}
+
+function box(bundle, d) {
+  const { cs, ds } = childrenOf(bundle, d.rel);
+  const n = concepts().filter((c) => c.bundle === bundle && (d.rel === "" || c.rel.startsWith(d.rel + "/"))).length;
+  const s = el("section", { className: "box" },
+    el("div", { className: "box-head" },
+      el("a", { href: href(d.key), textContent: d.title, title: d.rel ? d.rel + "/" : d.bundle }),
+      !d.rel && skipped(bundle) ? el("span", { className: "skip", textContent: "⚠ skipped entries", title: skipped(bundle) }) : null,
+      el("span", { className: "n", textContent: String(n) })),
+    el("div", { className: "chips" }, ...cs.map(chip)),
+    ds.length ? el("div", { className: "subs" }, ...ds.map((sub) => box(bundle, sub))) : null);
+  s.dataset.key = d.key;
+  if (!d.rel) {
+    // Bundles with more directories get wider; small ones share a row.
+    const basis = 300 * Math.min(4, 1 + ds.length);
+    s.style.flex = `${basis} 1 ${basis}px`;
+  }
+  return s;
+}
+
+function renderMap() {
+  chips = new Map();
+  const only = $("bundle").value;
+  const bs = data.bundles.filter((b) => !only || b.name === only);
+  const svg = document.createElementNS(SVG, "svg");
+  svg.id = "edges";
+  svg.innerHTML = `<defs>${["base", "out", "in"].map((k) =>
+    `<marker id="arrow-${k}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="${k === "base" ? 6 : 9}" markerHeight="${k === "base" ? 6 : 9}" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" style="fill: var(--${k === "base" ? "edge" : "edge-" + k}); stroke: none"/></marker>`).join("")}</defs>`;
+  $("map").replaceChildren(svg, ...(bs.length
+    ? bs.map((b) => box(b.name, byKey.get(b.name + "/")))
+    : [el("div", { className: "card empty", textContent: `No bundles in ${data.dir}.` })]));
+  filter();
+  focus();
+}
+
+function filter() {
+  const q = $("q").value.toLowerCase();
+  const st = $("state").value;
+  const all = concepts().filter((p) => chips.has(p.key));
+  let hit = 0;
+  for (const p of all) {
+    const ok = (!$("type").value || p.type === $("type").value) &&
+      (!$("trust").value || p.trust === $("trust").value) &&
+      (!st || (st === "stale" && p.stale) || (st === "deprecated" && p.status === "deprecated") || (st === "problem" && p.problem)) &&
+      (!q || [p.title, p.description, p.rel, p.body, ...(p.tags || [])].join("\n").toLowerCase().includes(q));
+    chips.get(p.key).classList.toggle("miss", !ok);
+    if (ok) hit++;
+  }
+  const edges = [...outLinks.values()].reduce((n, s) => n + s.length, 0);
+  const c = counts(all);
+  const stat = (n, label) => el("span", {}, el("b", { textContent: n }), " " + label);
+  $("count").replaceChildren(
+    ...(hit === all.length
+      ? [stat(all.length, "concepts"), stat(edges, "links"), stat(c.human, "human reviewed"), stat(c.stale, "stale"), stat(c.deprecated, "deprecated")]
+      : [stat(hit, `of ${all.length} concepts match`)]),
+    el("span", { className: "sep" }),
+    el("span", { className: "k" }, dot("human-reviewed"), "human"),
+    el("span", { className: "k" }, dot("machine-confirmed"), "machine"),
+    el("span", { className: "k" }, dot("unverified"), "unverified"),
+    el("span", { className: "k" }, el("span", { className: "line out" }), "links to"),
+    el("span", { className: "k" }, el("span", { className: "line in" }), "linked from"));
+}
+
+// Highlights the hovered or selected concept, its links and the box it's in.
+function focus() {
+  const key = hovered || current();
+  const outs = new Set(outLinks.get(key) || []);
+  const ins = new Set(byKey.get(key)?.backlinks || []);
+  for (const [k, c] of chips) {
+    c.classList.toggle("selected", k === current());
+    c.classList.toggle("linked-out", outs.has(k));
+    c.classList.toggle("linked-in", ins.has(k) && !outs.has(k));
+  }
+  $("map").classList.toggle("focusing", chips.has(key));
+  for (const b of $("map").querySelectorAll(".box")) b.classList.toggle("here", b.dataset.key === current());
+  drawEdges(key);
+}
+
+function drawEdges(key = hovered || current()) {
+  const map = $("map");
+  const svg = $("edges");
+  if (!svg) return;
+  const base = map.getBoundingClientRect();
+  svg.setAttribute("width", map.scrollWidth);
+  svg.setAttribute("height", map.scrollHeight);
+  const pos = (k) => {
+    const c = chips.get(k);
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { l: r.left - base.left, r: r.right - base.left, y: r.top - base.top + r.height / 2 };
+  };
+  const paths = [];
+  const later = [];
+  for (const [from, tos] of outLinks) {
+    const a = pos(from);
+    if (!a) continue;
+    for (const to of tos) {
+      const b = pos(to);
+      if (!b) continue;
+      const cls = !chips.has(key) ? "" : from === key ? "out" : to === key ? "in" : "dim";
+      const hot = cls === "out" || cls === "in";
+      if (!hot && !$("allLinks").checked) continue;
+      const d = curve(a, b, map.clientWidth);
+      const p = document.createElementNS(SVG, "path");
+      p.setAttribute("d", d);
+      if (cls) p.setAttribute("class", cls);
+      p.setAttribute("marker-end", `url(#arrow-${hot ? cls : "base"})`);
+      if (hot) {
+        // A halo keeps the curve readable where it crosses chips.
+        const halo = document.createElementNS(SVG, "path");
+        halo.setAttribute("d", d);
+        halo.setAttribute("class", "halo");
+        later.push(halo);
+      }
+      (hot ? later : paths).push(p);
+    }
+  }
+  svg.replaceChildren(svg.querySelector("defs"), ...paths, ...later);
+}
+
+// A curve from chip a to chip b: across between columns, or out to one
+// side and back within one, the right unless that leaves the map.
+function curve(a, b, width) {
+  if (Math.abs(a.l - b.l) < 60 || (a.l < b.r && b.l < a.r && Math.abs(a.r - b.r) < 60)) {
+    const bend = 18 + Math.min(70, Math.abs(a.y - b.y) / 5);
+    const x = Math.max(a.r, b.r);
+    if (x + bend * 0.75 < width - 4) {
+      return `M${a.r},${a.y} C${x + bend},${a.y} ${x + bend},${b.y} ${b.r + 2},${b.y}`;
+    }
+    const l = Math.min(a.l, b.l);
+    return `M${a.l},${a.y} C${l - bend},${a.y} ${l - bend},${b.y} ${b.l - 2},${b.y}`;
+  }
+  const [x1, x2] = b.l > a.l ? [a.r, b.l - 2] : [a.l, b.r + 2];
+  const dx = (x2 - x1) / 2;
+  return `M${x1},${a.y} C${x1 + dx},${a.y} ${x2 - dx},${b.y} ${x2},${b.y}`;
+}
+
+// Detail pane
+
+function bundleStats(cs) {
+  const c = counts(cs);
+  return el("div", { className: "bundle-stats" },
+    badge("", `${c.total} concepts`),
+    c.human ? badge("human-reviewed", `${c.human} human reviewed`) : null,
+    c.machine ? badge("machine-confirmed", `${c.machine} machine confirmed`) : null,
+    c.unverified ? badge("", `${c.unverified} unverified`) : null,
+    c.stale ? badge("stale", `${c.stale} stale`) : null,
+    c.deprecated ? badge("deprecated", `${c.deprecated} deprecated`) : null,
+    c.problem ? badge("problem", `${c.problem} with problems`) : null);
+}
+
+const skipped = (name) => data.bundles.find((b) => b.name === name)?.skipped.map((s) => `${s.rel}: ${s.reason}`).join("\n");
+
+function skippedWarning(b) {
+  if (!b.skipped.length) return null;
+  return el("div", { className: "warn" },
+    el("strong", { textContent: "Skipped: " }),
+    b.skipped.map((s) => `${s.rel} (${s.reason})`).join(", "));
+}
+
+function crumbs(p) {
+  const out = [];
+  const parts = p.kind === "dir" ? (p.rel ? p.rel.split("/") : []) : p.dir ? p.dir.split("/") : [];
+  if (!(p.kind === "dir" && !p.rel)) out.push(el("a", { href: href(p.bundle + "/"), textContent: byKey.get(p.bundle + "/")?.title || p.bundle }));
+  const upto = p.kind === "dir" ? parts.length - 1 : parts.length;
+  for (let i = 0; i < upto; i++) {
+    const rel = parts.slice(0, i + 1).join("/");
+    const d = byKey.get(p.bundle + "/" + rel + "/");
+    out.push("/", el("a", { href: href(p.bundle + "/" + rel + "/"), textContent: d ? d.title : parts[i] }));
+  }
+  return el("div", { className: "sheet-bar" },
+    el("nav", { className: "crumbs" }, ...out),
+    el("a", { className: "icon-btn", href: "#", title: "Close (Esc)", textContent: "×" }));
+}
+
+function copyButton(text) {
+  const b = el("button", { className: "btn", textContent: "Copy" });
+  b.onclick = async () => { await navigator.clipboard.writeText(text); b.textContent = "Copied"; };
+  return b;
+}
+
+const fileRow = (file) => el("span", { className: "path" }, el("span", { textContent: file }), copyButton(file));
+const mdCard = (html) => { const c = el("div", { className: "card md" }); c.innerHTML = html; return c; };
+const fileCard = (file) => el("div", { className: "card meta", style: "margin-top: 24px" },
+  el("span", { className: "label", textContent: "File" }), el("span", { className: "meta-value" }, fileRow(file)));
+
+function row(p) {
+  return el("a", { className: "row", href: href(p.key) },
+    el("span", { className: "row-name" }, dot(p.trust), el("span", { textContent: p.title })),
+    el("span", { className: "ts", textContent: date(p.modified) }),
+    p.description ? el("span", { className: "row-desc", textContent: p.description }) : null,
+    el("span", { className: "row-meta" }, badge("type", p.type || "?"), ...stateBadges(p), `${p.bundle}/${p.rel}`));
+}
+
+function linkSection(label, keys) {
+  const ps = keys.map((k) => byKey.get(k)).filter(Boolean);
+  if (!ps.length) return [];
+  return [
+    el("div", { className: "section-head" }, el("span", { className: "label", textContent: label })),
+    el("section", { className: "card list" }, ...ps.map(row)),
+  ];
+}
+
+function conceptPage(p) {
+  const meta = (label, ...value) => [el("span", { className: "label", textContent: label }), el("span", { className: "meta-value" }, ...value)];
+  const stamp = (s) => el("div", { textContent: s.at ? `${s.by} · ${s.at}` : s.by });
+  const tags = (p.tags || []).map((t) => {
+    const b = badge("tag", t);
+    b.onclick = () => { $("q").value = t; filter(); };
+    return b;
+  });
+  return [
+    crumbs(p),
+    el("h2", { className: "title", textContent: p.title }),
+    p.description ? el("p", { className: "desc", textContent: p.description }) : null,
+    el("div", { className: "badges" },
+      badge("type", p.type || "?"), badge(p.trust, trustLabel[p.trust]), ...stateBadges(p), ...tags),
+    p.problem ? el("div", { className: "warn problem", textContent: p.problem }) : null,
+    el("div", { className: "card meta" },
+      ...meta("ID", p.rel),
+      ...meta("Status", p.status),
+      ...(p.staleAfter ? meta("Stale after", p.staleAfter) : []),
+      ...meta("Verified", ...(p.verified || []).map(stamp), p.verified ? null : "—"),
+      ...(p.generated ? meta("Generated", stamp(p.generated)) : []),
+      ...meta("Modified", new Date(p.modified).toLocaleString()),
+      ...meta("File", fileRow(p.file))),
+    mdCard(p.html),
+    ...linkSection("Links to", outLinks.get(p.key) || []),
+    ...linkSection("Linked from", p.backlinks || []),
+  ];
+}
+
+function dirPage(p) {
+  const b = data.bundles.find((b) => b.name === p.bundle);
+  const top = !p.rel;
+  const { cs } = childrenOf(p.bundle, p.rel);
+  return [
+    crumbs(p),
+    el("h2", { className: "title", textContent: p.title }),
+    el("div", { className: "badges" },
+      p.log ? el("a", { className: "btn", href: href(p.log), textContent: "log.md" }) : null,
+      top && b.okfVersion ? badge("", "OKF " + b.okfVersion) : null),
+    top ? bundleStats(concepts().filter((c) => c.bundle === p.bundle)) : null,
+    top ? skippedWarning(b) : null,
+    p.html ? mdCard(p.html) : null,
+    // Without an index.md, list what the directory holds.
+    !p.html && cs.length ? el("section", { className: "card list" }, ...cs.map(row)) : null,
+    p.file ? fileCard(p.file) : null,
+  ];
+}
+
+const logPage = (p) => [crumbs(p), el("h2", { className: "title", textContent: p.rel }), mdCard(p.html), fileCard(p.file)];
+
+// Routing
+
+function route(scroll = true) {
+  const p = byKey.get(current());
+  document.body.classList.toggle("selected-page", !!p);
+  const view = !p ? [] : p.kind === "concept" ? conceptPage(p) : p.kind === "dir" ? dirPage(p) : logPage(p);
+  $("detailPane").replaceChildren(...view.filter(Boolean));
+  document.title = p ? `${p.title} · okf-view` : "okf-view";
+  focus();
+  if (!scroll) return;
+  $("detailPane").scrollTop = 0;
+  chips.get(current())?.scrollIntoView({ block: "nearest" });
+  if (p && matchMedia("(max-width: 900px)").matches) window.scrollTo(0, 0);
+}
+
+function fillSelect(select, values) {
+  const value = select.value;
+  select.replaceChildren(select.options[0], ...[...new Set(values)].sort().map((v) => el("option", { value: v, textContent: v })));
+  select.value = value;
+}
+
+async function loadData() {
+  const res = await fetch("api/data");
+  if (!res.ok) {
+    $("map").replaceChildren(el("div", { className: "card empty", textContent: await res.text() }));
+    return;
+  }
+  data = await res.json();
+  byKey = new Map(data.pages.map((p) => [p.key, p]));
+  outLinks = new Map();
+  for (const p of concepts()) {
+    for (const from of p.backlinks || []) outLinks.set(from, [...(outLinks.get(from) || []), p.key]);
+  }
+  $("dir").textContent = data.dir;
+  fillSelect($("bundle"), data.bundles.map((b) => b.name));
+  fillSelect($("type"), concepts().map((p) => p.type).filter(Boolean));
+  const y = $("detailPane").scrollTop;
+  renderMap();
+  route(false);
+  $("detailPane").scrollTop = y;
+}
+
+for (const id of ["q", "type", "trust", "state"]) $(id).addEventListener("input", filter);
+$("bundle").addEventListener("input", renderMap);
+try { $("allLinks").checked = localStorage.getItem("okf-view.allLinks") === "1"; } catch {}
+$("allLinks").addEventListener("input", () => {
+  try { localStorage.setItem("okf-view.allLinks", $("allLinks").checked ? "1" : "0"); } catch {}
+  drawEdges();
+});
+window.addEventListener("hashchange", () => route());
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && location.hash && document.activeElement?.tagName !== "INPUT") location.hash = "";
+});
+new ResizeObserver(() => drawEdges()).observe($("map"));
+// Bundles change on disk, often from another tool; pick that up when coming back.
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadData(); });
+loadData();
+</script>
+</body>
+</html>
