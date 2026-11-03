@@ -2,6 +2,13 @@
 
 Browse [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format) bundles in the browser. Read-only: it never modifies bundle files.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-dark.webp">
+  <img alt="okf-view cycling through the map with every link drawn, a search with a concept's links, a concept's side sheet, and a directory's side sheet" src="docs/images/screenshot-light.webp">
+</picture>
+
+The bundles shown are the [samples from the OKF repository](https://github.com/GoogleCloudPlatform/open-knowledge-format/tree/main/bundles).
+
 - **Map.** Every bundle at a glance: directories as nested boxes, concepts in them marked with their trust tier (OKF §5.3) and staleness, and how many links each has. Pointing at or opening a concept draws arrows to what it links to and from what links to it; "All links" draws every link.
 - **Search and filters.** Search titles, descriptions, bodies and tags; filter by bundle, `type`, trust tier, and stale, deprecated or malformed concepts. Concepts that don't match fade on the map.
 - **Side sheet.** Opening a concept or directory shows it in a sheet beside the map, which stays in view; Esc closes it, and the button in its header or M maximizes it to the whole window and restores it. A concept's frontmatter (`verified`, `generated`, `stale_after`, tags, `sources`), its body rendered as Markdown with `（source: <id>）` citations linked to their sources, and the concepts it links to and that link to it. A directory shows its `index.md` and contents, and links to its `log.md`.
