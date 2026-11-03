@@ -232,6 +232,9 @@
   .meta .label { font-size: 0.8rem; color: var(--faint); }
   .meta-value { font: 0.85rem var(--mono); color: var(--ink); word-break: break-all; }
   .meta-value > div + div { margin-top: 2px; }
+  .meta-value.sources { font-family: var(--sans); word-break: normal; overflow-wrap: anywhere; }
+  .meta-value .id { margin-left: 8px; font: 0.75rem var(--mono); color: var(--faint); }
+  a.broken { color: var(--danger); text-decoration: underline wavy; cursor: help; }
   .path { display: flex; gap: 10px; align-items: center; }
   .btn { flex: none; display: inline-flex; align-items: center; height: 32px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 999px; background: transparent; color: var(--accent); font: 500 0.85rem var(--sans); cursor: pointer; white-space: nowrap; }
   .btn:hover { background: var(--hover); color: var(--accent); text-decoration: none; }
@@ -248,7 +251,6 @@
   .md li { margin: 4px 0; }
   .md li::marker { color: var(--faint); }
   .md a:hover { text-decoration: underline; }
-  .md a.broken { color: var(--danger); text-decoration: underline wavy; cursor: help; }
   .md strong { font-weight: 500; }
   .md code { font-family: var(--mono); font-size: 0.88em; background: var(--surface-2); border-radius: 6px; padding: 2px 6px; }
   .md pre { background: var(--code-bg); border-radius: 12px; padding: 16px 18px; margin: 14px 0; overflow-x: auto; }
@@ -591,6 +593,14 @@ function linkSection(label, keys) {
   ];
 }
 
+// A source's title, linked to its resource when that's in reach.
+function source(s) {
+  const t = s.broken
+    ? el("a", { className: "broken", textContent: s.title, title: "Not in the bundle: " + s.resource })
+    : s.href ? el("a", { href: s.href, textContent: s.title, title: s.resource }) : el("span", { textContent: s.title, title: s.resource || "" });
+  return el("div", {}, t, s.id && s.id !== s.title ? el("span", { className: "id", textContent: s.id }) : null);
+}
+
 function conceptPage(p) {
   const meta = (label, ...value) => [el("span", { className: "label", textContent: label }), el("span", { className: "meta-value" }, ...value)];
   const stamp = (s) => el("div", { textContent: s.at ? `${s.by} · ${s.at}` : s.by });
@@ -612,6 +622,7 @@ function conceptPage(p) {
       ...(p.staleAfter ? meta("Stale after", p.staleAfter) : []),
       ...meta("Verified", ...(p.verified || []).map(stamp), p.verified ? null : "—"),
       ...(p.generated ? meta("Generated", stamp(p.generated)) : []),
+      ...(p.sources ? [el("span", { className: "label", textContent: "Sources" }), el("span", { className: "meta-value sources" }, ...p.sources.map(source))] : []),
       ...meta("Modified", new Date(p.modified).toLocaleString()),
       ...meta("File", fileRow(p.file))),
     mdCard(p.html),

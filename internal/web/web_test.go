@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,11 +16,23 @@ func newServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	dir := t.TempDir()
 	files := map[string]string{
-		"b/index.md":    "---\nokf_version: \"0.2\"\n---\n# Bundle B\n\n* [A](a.md)\n* [Sub](sub/)\n",
-		"b/a.md":        "---\ntype: Rule\n---\n[C](/sub/c.md) [gone](gone.md) [img](pic.png) <script>x</script>\n",
-		"b/sub/c.md":    "---\ntype: Rule\n---\n[A](/a.md) [idx](/index.md)\n",
-		"b/sub/log.md":  "# Log\n",
-		"b/pic.png":     "png",
+		"b/index.md":   "---\nokf_version: \"0.2\"\n---\n# Bundle B\n\n* [A](a.md)\n* [Sub](sub/)\n",
+		"b/a.md":       "---\ntype: Rule\n---\n[C](/sub/c.md) [gone](gone.md) [img](pic.png) <script>x</script>\n",
+		"b/sub/c.md":   "---\ntype: Rule\n---\n[A](/a.md) [idx](/index.md)\n",
+		"b/sub/log.md": "# Log\n",
+		"b/pic.png":    "png",
+		"b/s.md": `---
+type: Rule
+sources:
+  - { id: thread, resource: "https://example.com/t", title: "A <thread>" }
+  - { id: a_b, resource: a.md }
+  - { id: gone, resource: gone.md }
+  - { id: js, resource: "javascript:alert(1)" }
+  - { id: note }
+---
+Kept by hand（source: thread）, see（source: a_b, nope）.
+` + "`（source: thread）`" + `
+`,
 		"secret.txt":    "secret",
 		"b/notes/x.txt": "x",
 	}
@@ -85,7 +98,7 @@ func TestData(t *testing.T) {
 			t.Errorf("a html lacks %s: %s", want, a.HTML)
 		}
 	}
-	if len(a.Backlinks) != 1 || a.Backlinks[0] != "b/sub/c.md" {
+	if !slices.Equal(a.Backlinks, []string{"b/s.md", "b/sub/c.md"}) {
 		t.Errorf("a backlinks = %v", a.Backlinks)
 	}
 	if c := pages["b/sub/c.md"]; !strings.Contains(c.HTML, `href="#b/"`) {
@@ -96,6 +109,40 @@ func TestData(t *testing.T) {
 	}
 	if _, ok := pages["b/notes/"]; !ok {
 		t.Error("directory without index.md has no page")
+	}
+}
+
+func TestSources(t *testing.T) {
+	srv := newServer(t)
+	_, body := get(t, srv.URL+"/api/data")
+	var d dataJSON
+	if err := json.Unmarshal([]byte(body), &d); err != nil {
+		t.Fatal(err)
+	}
+	var s pageJSON
+	for _, p := range d.Pages {
+		if p.Key == "b/s.md" {
+			s = p
+		}
+	}
+	want := []sourceJSON{
+		{ID: "thread", Title: "A <thread>", Resource: "https://example.com/t", Href: "https://example.com/t"},
+		{ID: "a_b", Title: "a_b", Resource: "a.md", Href: "#b/a.md"},
+		{ID: "gone", Title: "gone", Resource: "gone.md", Broken: true},
+		{ID: "js", Title: "js", Resource: "javascript:alert(1)"},
+		{ID: "note", Title: "note"},
+	}
+	if !slices.Equal(s.Sources, want) {
+		t.Errorf("sources = %+v", s.Sources)
+	}
+	for _, w := range []string{
+		`Kept by hand（source: <a href="https://example.com/t" title="A &lt;thread&gt;">thread</a>）, see`,
+		`（source: <a href="#b/a.md" title="a_b">a_b</a>, <a class="broken" title="Not in sources: nope">nope</a>）.`,
+		"<code>（source: thread）</code>",
+	} {
+		if !strings.Contains(s.HTML, w) {
+			t.Errorf("html lacks %s: %s", w, s.HTML)
+		}
 	}
 }
 
