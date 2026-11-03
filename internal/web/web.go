@@ -16,7 +16,9 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 
 	"github.com/yokonao/okf-view/internal/okf"
 )
@@ -65,28 +67,29 @@ type bundleJSON struct {
 // pageJSON is a concept, a directory (with its index.md, if any) or a log.md.
 // Key is "<bundle>/<path>", with a trailing "/" for a directory.
 type pageJSON struct {
-	Key         string      `json:"key"`
-	Kind        string      `json:"kind"`
-	Bundle      string      `json:"bundle"`
-	Rel         string      `json:"rel"`
-	Dir         string      `json:"dir"`
-	File        string      `json:"file,omitempty"`
-	Title       string      `json:"title"`
-	Description string      `json:"description,omitempty"`
-	Type        string      `json:"type,omitempty"`
-	Tags        []string    `json:"tags,omitempty"`
-	Status      string      `json:"status,omitempty"`
-	StaleAfter  string      `json:"staleAfter,omitempty"`
-	Stale       bool        `json:"stale,omitempty"`
-	Trust       okf.Trust   `json:"trust,omitempty"`
-	Verified    []okf.Stamp `json:"verified,omitempty"`
-	Generated   *okf.Stamp  `json:"generated,omitempty"`
-	Modified    *time.Time  `json:"modified,omitempty"`
-	Problem     string      `json:"problem,omitempty"`
-	Body        string      `json:"body,omitempty"`
-	HTML        string      `json:"html"`
-	Backlinks   []string    `json:"backlinks,omitempty"`
-	Log         string      `json:"log,omitempty"`
+	Key         string       `json:"key"`
+	Kind        string       `json:"kind"`
+	Bundle      string       `json:"bundle"`
+	Rel         string       `json:"rel"`
+	Dir         string       `json:"dir"`
+	File        string       `json:"file,omitempty"`
+	Title       string       `json:"title"`
+	Description string       `json:"description,omitempty"`
+	Type        string       `json:"type,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Status      string       `json:"status,omitempty"`
+	StaleAfter  string       `json:"staleAfter,omitempty"`
+	Stale       bool         `json:"stale,omitempty"`
+	Trust       okf.Trust    `json:"trust,omitempty"`
+	Verified    []okf.Stamp  `json:"verified,omitempty"`
+	Generated   *okf.Stamp   `json:"generated,omitempty"`
+	Modified    *time.Time   `json:"modified,omitempty"`
+	Problem     string       `json:"problem,omitempty"`
+	Sources     []sourceJSON `json:"sources,omitempty"`
+	Body        string       `json:"body,omitempty"`
+	HTML        string       `json:"html"`
+	Backlinks   []string     `json:"backlinks,omitempty"`
+	Log         string       `json:"log,omitempty"`
 }
 
 type dataJSON struct {
@@ -134,7 +137,7 @@ func pages(b *okf.Bundle) []pageJSON {
 				p.Title, body = title, rest
 			}
 			p.File, p.Body, p.Modified = idx.Path, body, &idx.Modified
-			p.HTML = render(b, path.Join(d, "index"), body)
+			p.HTML = render(b, path.Join(d, "index"), body, nil)
 		}
 		if lg := b.Logs[d]; lg != nil {
 			rel := path.Join(d, "log.md")
@@ -142,7 +145,7 @@ func pages(b *okf.Bundle) []pageJSON {
 			out = append(out, pageJSON{
 				Key: p.Log, Kind: "log", Bundle: b.Name, Rel: rel, Dir: d, File: lg.Path,
 				Title: "log.md", Body: lg.Body, Modified: &lg.Modified,
-				HTML: render(b, path.Join(d, "log"), lg.Body),
+				HTML: render(b, path.Join(d, "log"), lg.Body, nil),
 			})
 		}
 		out = append(out, p)
@@ -152,12 +155,13 @@ func pages(b *okf.Bundle) []pageJSON {
 		if dir == "." {
 			dir = ""
 		}
+		srcs := sources(b, c)
 		p := pageJSON{
 			Key: b.Name + "/" + c.ID + ".md", Kind: "concept", Bundle: b.Name, Rel: c.ID, Dir: dir, File: c.Path,
 			Title: c.Title, Description: c.Description, Type: c.Type, Tags: c.Tags,
 			Status: c.Status, StaleAfter: c.StaleAfter, Stale: c.Stale, Trust: c.Trust,
 			Verified: c.Verified, Generated: c.Generated, Modified: &c.Modified, Problem: c.Problem,
-			Body: c.Body, HTML: render(b, c.ID, c.Body),
+			Sources: srcs, Body: c.Body, HTML: render(b, c.ID, c.Body, srcs),
 		}
 		for _, from := range b.Backlinks[c.ID] {
 			p.Backlinks = append(p.Backlinks, b.Name+"/"+from+".md")
@@ -185,14 +189,20 @@ func leadingH1(body string) (string, string, bool) {
 	return body[m[2]:m[3]], body[m[1]:], true
 }
 
-var md = goldmark.New(goldmark.WithExtensions(extension.GFM))
+var md = goldmark.New(
+	goldmark.WithExtensions(extension.GFM),
+	goldmark.WithRendererOptions(renderer.WithNodeRenderers(util.Prioritized(citeRenderer{}, 500))),
+)
 
 // render converts Markdown to HTML with links within the bundle pointing at
-// the UI's pages. fromID is the document's path without ".md". Raw HTML in
-// the source is escaped.
-func render(b *okf.Bundle, fromID, body string) string {
+// the UI's pages and citations of srcs linked to them. fromID is the
+// document's path without ".md". Raw HTML in the source is escaped.
+func render(b *okf.Bundle, fromID, body string, srcs []sourceJSON) string {
 	src := []byte(body)
 	doc := md.Parser().Parse(text.NewReader(src))
+	if srcs != nil {
+		cite(doc, src, srcs)
+	}
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil

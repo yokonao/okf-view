@@ -58,6 +58,13 @@ type Stamp struct {
 	At string `json:"at,omitempty"`
 }
 
+// Source is an entry of a concept's `sources`.
+type Source struct {
+	ID       string
+	Resource string
+	Title    string
+}
+
 type Concept struct {
 	// ID is the path within the bundle without ".md" (OKF §2).
 	ID          string
@@ -74,6 +81,7 @@ type Concept struct {
 	Verified   []Stamp
 	Trust      Trust
 	Generated  *Stamp
+	Sources    []Source
 	Body       string
 	// Refs are link targets as written in the body and sources.
 	Refs    []string
@@ -346,8 +354,17 @@ func parseConcept(id string, doc *Doc, now time.Time) *Concept {
 	c.Refs = bodyLinks(body)
 	if sources, ok := data["sources"].([]any); ok {
 		for _, s := range sources {
-			if m, ok := s.(map[string]any); ok && str(m["resource"]) != "" {
-				c.Refs = append(c.Refs, str(m["resource"]))
+			m, ok := s.(map[string]any)
+			if !ok {
+				continue
+			}
+			src := Source{ID: str(m["id"]), Resource: str(m["resource"]), Title: str(m["title"])}
+			if src.ID == "" && src.Resource == "" {
+				continue
+			}
+			c.Sources = append(c.Sources, src)
+			if src.Resource != "" {
+				c.Refs = append(c.Refs, src.Resource)
 			}
 		}
 	}
