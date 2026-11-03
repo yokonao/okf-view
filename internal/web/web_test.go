@@ -84,7 +84,7 @@ func TestData(t *testing.T) {
 		pages[p.Key] = p
 	}
 	root := pages["b/"]
-	if root.Kind != "dir" || root.Title != "Bundle B" || strings.Contains(root.HTML, "<h1>") {
+	if root.Kind != "dir" || root.Title != "b" || !strings.Contains(root.HTML, "<h1>Bundle B</h1>") {
 		t.Errorf("root = %+v", root)
 	}
 	for _, want := range []string{`href="#b/a.md"`, `href="#b/sub/"`} {

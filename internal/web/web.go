@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -133,9 +132,6 @@ func pages(b *okf.Bundle) []pageJSON {
 		}
 		if idx := b.Indexes[d]; idx != nil {
 			_, body, _ := okf.Frontmatter(idx.Body)
-			if title, rest, ok := leadingH1(body); ok {
-				p.Title, body = title, rest
-			}
 			p.File, p.Body, p.Modified = idx.Path, body, &idx.Modified
 			p.HTML = render(b, path.Join(d, "index"), body, nil)
 		}
@@ -176,17 +172,6 @@ func dirKey(bundle, dir string) string {
 		return bundle + "/"
 	}
 	return bundle + "/" + dir + "/"
-}
-
-var h1Re = regexp.MustCompile(`^\s*# +(.+?)\s*#*\s*(?:\n|$)`)
-
-// leadingH1 splits off a heading the page shows as its title.
-func leadingH1(body string) (string, string, bool) {
-	m := h1Re.FindStringSubmatchIndex(body)
-	if m == nil {
-		return "", body, false
-	}
-	return body[m[2]:m[3]], body[m[1]:], true
 }
 
 var md = goldmark.New(
