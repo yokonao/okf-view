@@ -4,7 +4,7 @@ Browse [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open
 
 - **Map.** Every bundle at a glance: directories as nested boxes, concepts in them marked with their trust tier (OKF §5.3) and staleness, and how many links each has. Pointing at or opening a concept draws arrows to what it links to and from what links to it; "All links" draws every link.
 - **Search and filters.** Search titles, descriptions, bodies and tags; filter by bundle, `type`, trust tier, and stale, deprecated or malformed concepts. Concepts that don't match fade on the map.
-- **Side sheet.** Opening a concept or directory shows it in a sheet beside the map, which stays in view; Esc closes it. A concept's frontmatter (`verified`, `generated`, `stale_after`, tags, `sources`), its body rendered as Markdown with `（source: <id>）` citations linked to their sources, and the concepts it links to and that link to it. A directory shows its `index.md` and contents, and links to its `log.md`.
+- **Side sheet.** Opening a concept or directory shows it in a sheet beside the map, which stays in view; Esc closes it, and the button in its header or M maximizes it to the whole window and restores it. A concept's frontmatter (`verified`, `generated`, `stale_after`, tags, `sources`), its body rendered as Markdown with `（source: <id>）` citations linked to their sources, and the concepts it links to and that link to it. A directory shows its `index.md` and contents, and links to its `log.md`.
 - **Links.** Links within a bundle open in the viewer, including those starting with `/`, which OKF resolves from the bundle root. Links to missing files are marked.
 
 Bundles are read again on each page load and whenever the tab comes back into view, so edits show up without a restart.
