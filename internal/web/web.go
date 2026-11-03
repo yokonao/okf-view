@@ -89,6 +89,8 @@ type pageJSON struct {
 	HTML        string       `json:"html"`
 	Backlinks   []string     `json:"backlinks,omitempty"`
 	Log         string       `json:"log,omitempty"`
+	// Files are the paths of the non-Markdown files directly in a directory.
+	Files []string `json:"files,omitempty"`
 }
 
 type dataJSON struct {
@@ -123,6 +125,17 @@ func pages(b *okf.Bundle) []pageJSON {
 		dirs = append(dirs, d)
 	}
 	sort.Strings(dirs)
+	files := map[string][]string{}
+	for f := range b.Files {
+		if strings.HasSuffix(f, ".md") {
+			continue
+		}
+		d := path.Dir(f)
+		if d == "." {
+			d = ""
+		}
+		files[d] = append(files[d], f)
+	}
 	for _, d := range dirs {
 		p := pageJSON{Key: dirKey(b.Name, d), Kind: "dir", Bundle: b.Name, Rel: d, Dir: path.Dir(d), Title: path.Base(d)}
 		if d == "" {
@@ -130,6 +143,8 @@ func pages(b *okf.Bundle) []pageJSON {
 		} else if p.Dir == "." {
 			p.Dir = ""
 		}
+		p.Files = files[d]
+		sort.Strings(p.Files)
 		if idx := b.Indexes[d]; idx != nil {
 			_, body, _ := okf.Frontmatter(idx.Body)
 			p.File, p.Body, p.Modified = idx.Path, body, &idx.Modified

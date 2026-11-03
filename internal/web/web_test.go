@@ -107,8 +107,11 @@ func TestData(t *testing.T) {
 	if sub := pages["b/sub/"]; sub.Log != "b/sub/log.md" || pages["b/sub/log.md"].Kind != "log" {
 		t.Errorf("sub log = %q", sub.Log)
 	}
-	if _, ok := pages["b/notes/"]; !ok {
-		t.Error("directory without index.md has no page")
+	if notes, ok := pages["b/notes/"]; !ok || !slices.Equal(notes.Files, []string{"notes/x.txt"}) {
+		t.Errorf("notes = %+v", notes)
+	}
+	if !slices.Equal(root.Files, []string{"pic.png"}) {
+		t.Errorf("root files = %v", root.Files)
 	}
 }
 
