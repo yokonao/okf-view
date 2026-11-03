@@ -37,6 +37,12 @@ Starts a local web server (a random port on `127.0.0.1` by default), opens it in
 
 Inside a bundle, a link to a directory is followed only when it stays within the bundle; the overview lists any it skipped.
 
+## Links into sibling bundles
+
+okf-view resolves one kind of link that OKF v0.2 leaves undefined. A relative link that leaves its bundle by one level, such as `../kakeibo/accounts/index.md`, opens in the bundle named `kakeibo` when `serve` loaded it from the same directory, and links between concepts this way are drawn on the map and counted as backlinks.
+
+This is an extension, not part of the spec. It doesn't break the spec either: the link is a relative path (§6.2), and to a consumer without the extension it's a broken link, which consumers must tolerate (§11). It lives in `internal/okf/sibling.go` and goes away once OKF defines links across bundles.
+
 ## Development
 
 ```sh

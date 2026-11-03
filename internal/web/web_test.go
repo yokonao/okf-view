@@ -18,7 +18,8 @@ func newServer(t *testing.T) *httptest.Server {
 	files := map[string]string{
 		"b/index.md":   "---\nokf_version: \"0.2\"\n---\n# Bundle B\n\n* [A](a.md)\n* [Sub](sub/)\n",
 		"b/a.md":       "---\ntype: Rule\n---\n[C](/sub/c.md) [gone](gone.md) [img](pic.png) <script>x</script>\n",
-		"b/sub/c.md":   "---\ntype: Rule\n---\n[A](/a.md) [idx](/index.md)\n",
+		"b/sub/c.md":   "---\ntype: Rule\n---\n[A](/a.md) [idx](/index.md) [K](../../k/x.md)\n",
+		"k/x.md":       "---\ntype: Rule\n---\n",
 		"b/sub/log.md": "# Log\n",
 		"b/pic.png":    "png",
 		"b/s.md": `---
@@ -103,6 +104,12 @@ func TestData(t *testing.T) {
 	}
 	if c := pages["b/sub/c.md"]; !strings.Contains(c.HTML, `href="#b/"`) {
 		t.Errorf("index link not to the directory: %s", c.HTML)
+	}
+	if c := pages["b/sub/c.md"]; !strings.Contains(c.HTML, `href="#k/x.md"`) {
+		t.Errorf("sibling bundle link not resolved: %s", c.HTML)
+	}
+	if x := pages["k/x.md"]; !slices.Equal(x.Backlinks, []string{"b/sub/c.md"}) {
+		t.Errorf("k/x backlinks = %v", x.Backlinks)
 	}
 	if sub := pages["b/sub/"]; sub.Log != "b/sub/log.md" || pages["b/sub/log.md"].Kind != "log" {
 		t.Errorf("sub log = %q", sub.Log)

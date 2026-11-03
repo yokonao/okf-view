@@ -54,8 +54,8 @@ func sources(b *okf.Bundle, c *okf.Concept) []sourceJSON {
 				sj.Href = s.Resource
 			}
 		default:
-			if rel, ok := b.Resolve(c.ID, s.Resource); ok {
-				sj.Href = href(b, rel)
+			if h, ok := link(b, c.ID, s.Resource); ok {
+				sj.Href = h
 			} else {
 				sj.Broken = true
 			}
