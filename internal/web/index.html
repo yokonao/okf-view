@@ -399,12 +399,14 @@ function degree(c) {
 
 function box(bundle, d) {
   const { cs, ds } = childrenOf(bundle, d.rel);
-  const n = concepts().filter((c) => c.bundle === bundle && (d.rel === "" || c.rel.startsWith(d.rel + "/"))).length;
+  const under = (p) => p.bundle === bundle && (d.rel === "" || p.rel === d.rel || p.rel.startsWith(d.rel + "/"));
+  const n = concepts().filter(under).length;
+  const f = data.pages.filter((p) => p.kind === "dir" && under(p)).reduce((n, p) => n + (p.files || []).length, 0);
   const s = el("section", { className: "box" },
     el("div", { className: "box-head" },
       el("a", { href: href(d.key), textContent: d.title, title: d.rel ? d.rel + "/" : d.bundle }),
       !d.rel && skipped(bundle) ? el("span", { className: "skip", textContent: "⚠ skipped entries", title: skipped(bundle) }) : null,
-      el("span", { className: "n", textContent: String(n) })),
+      el("span", { className: "n", textContent: f ? `${n} · ${f} ${f === 1 ? "file" : "files"}` : String(n), title: `${n} concepts` + (f ? `, ${f} other files` : "") })),
     el("div", { className: "chips" }, ...cs.map(chip)),
     ds.length ? el("div", { className: "subs" }, ...ds.map((sub) => box(bundle, sub))) : null);
   s.dataset.key = d.key;
@@ -612,6 +614,17 @@ function row(p) {
     el("span", { className: "row-meta" }, badge("type", p.type || "?"), ...stateBadges(p), `${p.bundle}/${p.rel}`));
 }
 
+// Files that aren't concepts, opened as they are in a sandbox.
+function filesSection(p) {
+  if (!p.files) return [];
+  return [
+    el("div", { className: "section-head" }, el("span", { className: "label", textContent: "Files" })),
+    el("section", { className: "card list" }, ...p.files.map((f) => el("a", {
+      className: "row", href: "files/" + encodeURI(p.bundle + "/" + f), target: "_blank", rel: "noopener",
+    }, el("span", { className: "row-name", textContent: f.split("/").pop() })))),
+  ];
+}
+
 function linkSection(label, keys) {
   const ps = keys.map((k) => byKey.get(k)).filter(Boolean);
   if (!ps.length) return [];
@@ -674,6 +687,7 @@ function dirPage(p) {
     p.html ? mdCard(p.html) : null,
     // Without an index.md, list what the directory holds.
     !p.html && cs.length ? el("section", { className: "card list" }, ...cs.map(row)) : null,
+    ...filesSection(p),
     p.file ? fileCard(p.file) : null,
   ];
 }
