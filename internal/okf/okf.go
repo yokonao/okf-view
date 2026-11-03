@@ -107,7 +107,10 @@ type Bundle struct {
 	Logs    map[string]*Doc
 	// Backlinks maps a concept ID to the IDs of the concepts linking to it.
 	Backlinks map[string][]string
-	Skipped   []Skip
+	// SiblingBacklinks are backlinks from other bundles; see sibling.go.
+	SiblingBacklinks map[string][]Ref
+	siblings         []*Bundle
+	Skipped          []Skip
 }
 
 type Skip struct {
@@ -152,6 +155,7 @@ func Load(dir string, now time.Time) ([]*Bundle, error) {
 		}
 		bundles = append(bundles, b)
 	}
+	linkSiblings(bundles)
 	return bundles, nil
 }
 
@@ -278,13 +282,8 @@ func IsExternal(target string) bool {
 // document at fromID (a path without ".md"), points to, and whether it exists.
 // A target starting with "/" is relative to the bundle root (OKF §6).
 func (b *Bundle) Resolve(fromID, target string) (string, bool) {
-	if IsExternal(target) {
-		return "", false
-	}
-	clean, _, _ := strings.Cut(target, "#")
-	clean, _, _ = strings.Cut(clean, "?")
-	clean, err := url.PathUnescape(clean)
-	if err != nil || clean == "" {
+	clean := cleanTarget(target)
+	if clean == "" {
 		return "", false
 	}
 	exists := func(rel string) bool { return b.Files[rel] || b.Dirs[rel] }
@@ -304,6 +303,20 @@ func (b *Bundle) Resolve(fromID, target string) (string, bool) {
 		return "", false
 	}
 	return fromDir, false
+}
+
+// cleanTarget is target as a path without its fragment and query, or "" when external or malformed.
+func cleanTarget(target string) string {
+	if IsExternal(target) {
+		return ""
+	}
+	clean, _, _ := strings.Cut(target, "#")
+	clean, _, _ = strings.Cut(clean, "?")
+	clean, err := url.PathUnescape(clean)
+	if err != nil {
+		return ""
+	}
+	return clean
 }
 
 func parseConcept(id string, doc *Doc, now time.Time) *Concept {

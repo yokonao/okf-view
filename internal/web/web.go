@@ -177,6 +177,9 @@ func pages(b *okf.Bundle) []pageJSON {
 		for _, from := range b.Backlinks[c.ID] {
 			p.Backlinks = append(p.Backlinks, b.Name+"/"+from+".md")
 		}
+		for _, from := range b.SiblingBacklinks[c.ID] {
+			p.Backlinks = append(p.Backlinks, from.Bundle+"/"+from.ID+".md")
+		}
 		out = append(out, p)
 	}
 	return out
@@ -227,13 +230,24 @@ func rewrite(b *okf.Bundle, fromID string, n ast.Node, dest *[]byte) {
 	if okf.IsExternal(raw) {
 		return
 	}
-	rel, ok := b.Resolve(fromID, raw)
+	h, ok := link(b, fromID, raw)
 	if !ok {
 		n.SetAttributeString("class", []byte("broken"))
 		n.SetAttributeString("title", []byte("Not in the bundle: "+raw))
 		return
 	}
-	*dest = []byte(href(b, rel))
+	*dest = []byte(h)
+}
+
+// link is where the UI shows target, as written in the document fromID, if it exists.
+func link(b *okf.Bundle, fromID, target string) (string, bool) {
+	if rel, ok := b.Resolve(fromID, target); ok {
+		return href(b, rel), true
+	}
+	if o, rel, ok := b.ResolveSibling(fromID, target); ok {
+		return href(o, rel), true
+	}
+	return "", false
 }
 
 // href is where the UI shows the file or directory at rel.
