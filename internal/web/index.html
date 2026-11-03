@@ -296,6 +296,7 @@
       <select id="trust">
         <option value="">Any trust</option>
         <option value="human-reviewed">Human reviewed</option>
+        <option value="not-human-reviewed">Not human reviewed</option>
         <option value="machine-confirmed">Machine confirmed</option>
         <option value="unverified">Unverified</option>
       </select>
@@ -433,11 +434,12 @@ function renderMap() {
 function filter() {
   const q = $("q").value.toLowerCase();
   const st = $("state").value;
+  const tr = $("trust").value;
   const all = concepts().filter((p) => chips.has(p.key));
   let hit = 0;
   for (const p of all) {
     const ok = (!$("type").value || p.type === $("type").value) &&
-      (!$("trust").value || p.trust === $("trust").value) &&
+      (!tr || p.trust === tr || (tr === "not-human-reviewed" && p.trust !== "human-reviewed")) &&
       (!st || (st === "stale" && p.stale) || (st === "deprecated" && p.status === "deprecated") || (st === "problem" && p.problem)) &&
       (!q || [p.title, p.description, p.rel, p.body, ...(p.tags || [])].join("\n").toLowerCase().includes(q));
     chips.get(p.key).classList.toggle("miss", !ok);
@@ -448,7 +450,7 @@ function filter() {
   const stat = (n, label) => el("span", {}, el("b", { textContent: n }), " " + label);
   $("count").replaceChildren(
     ...(hit === all.length
-      ? [stat(all.length, "concepts"), stat(edges, "links"), stat(c.human, "human reviewed"), stat(c.stale, "stale"), stat(c.deprecated, "deprecated")]
+      ? [stat(all.length, "concepts"), stat(edges, "links"), stat(c.human, "human reviewed"), stat(all.length - c.human, "not human reviewed"), stat(c.stale, "stale"), stat(c.deprecated, "deprecated")]
       : [stat(hit, `of ${all.length} concepts match`)]),
     el("span", { className: "sep" }),
     el("span", { className: "k" }, dot("human-reviewed"), "human"),
