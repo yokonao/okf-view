@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.0.3 - 2026-11-04
+
+### Added
+
+- The trust filter has "Not human reviewed", which selects machine confirmed and unverified concepts together, and the header counts concepts not human reviewed.
+- A directory's side sheet lists the files in it that aren't concepts, each opening in a new tab, and a box on the map counts them next to its concepts.
+- Links into sibling bundles: a relative link leaving its bundle by one level, such as `../kakeibo/accounts/index.md`, opens in the bundle it names when `serve` loaded it from the same directory, and is drawn on the map and counted as a backlink. This is an extension OKF v0.2 doesn't define.
+
 ## v0.0.2 - 2026-11-04
 
 ### Added
