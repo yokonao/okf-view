@@ -104,6 +104,10 @@
   .sheet-bar .crumbs { flex: 1; margin: 0; }
   .icon-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; color: var(--muted); font-size: 1.4rem; line-height: 1; }
   .icon-btn:hover { background: var(--hover); color: var(--ink); text-decoration: none; }
+  button.icon-btn { border: 0; background: none; cursor: pointer; }
+  .icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+  .maximized.selected-page .panes { grid-template-columns: minmax(0, 1fr); }
+  .maximized.selected-page #mapPane { display: none; }
 
   .toolbar { flex: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 16px 16px 10px; }
   .toolbar select { flex: 0 1 160px; }
@@ -271,6 +275,7 @@
     #map { padding: 6px 12px 28px; }
     #detailPane { position: fixed; inset: 0; z-index: 20; border-radius: 0; padding: 20px 16px 60px; }
     .sheet-bar { margin: -20px -16px 8px; padding: 10px 8px 8px 16px; }
+    .max-btn { display: none !important; }
     .md { padding: 18px; }
     .title { font-size: 1.6rem; }
   }
@@ -562,7 +567,28 @@ function crumbs(p) {
   }
   return el("div", { className: "sheet-bar" },
     el("nav", { className: "crumbs" }, ...out),
+    maxButton(),
     el("a", { className: "icon-btn", href: "#", title: "Close (Esc)", textContent: "×" }));
+}
+
+const maxIcons = {
+  maximize: "M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z",
+  restore: "M22 3.41 16.71 8.7 20 12h-8V4l3.29 3.29L20.59 2 22 3.41zM3.41 22l5.29-5.29L12 20v-8H4l3.29 3.29L2 20.59 3.41 22z",
+};
+
+function maxButton() {
+  const max = document.body.classList.contains("maximized");
+  const b = el("button", { className: "icon-btn max-btn", title: max ? "Restore (M)" : "Maximize (M)" });
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${maxIcons[max ? "restore" : "maximize"]}"/></svg>`;
+  b.setAttribute("aria-label", max ? "Restore" : "Maximize");
+  b.onclick = toggleMaximized;
+  return b;
+}
+
+function toggleMaximized() {
+  document.body.classList.toggle("maximized");
+  $("detailPane").querySelector(".max-btn")?.replaceWith(maxButton());
+  if (!document.body.classList.contains("maximized")) chips.get(current())?.scrollIntoView({ block: "nearest" });
 }
 
 function copyButton(text) {
@@ -703,7 +729,9 @@ $("allLinks").addEventListener("input", () => {
 });
 window.addEventListener("hashchange", () => route());
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && location.hash && document.activeElement?.tagName !== "INPUT") location.hash = "";
+  if (["INPUT", "SELECT"].includes(document.activeElement?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "Escape" && location.hash) location.hash = "";
+  if ((e.key === "m" || e.key === "M") && byKey.has(current())) toggleMaximized();
 });
 new ResizeObserver(() => drawEdges()).observe($("map"));
 // Bundles change on disk, often from another tool; pick that up when coming back.
