@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.0.4 - 2026-11-11
+
+### Fixed
+
+- Autolinks in concept bodies leave out punctuation exposed by an unmatched `)`, so `(https://example.com/path.)` links `https://example.com/path` (goldmark v1.8.7).
+- A blank line containing a tab inside an indented code block no longer gains stray indentation (goldmark v1.8.7).
+
 ## v0.0.3 - 2026-11-04
 
 ### Added
